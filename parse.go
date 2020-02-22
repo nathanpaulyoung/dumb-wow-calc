@@ -75,9 +75,9 @@ func getTopEnd(body string) int {
 	return value
 }
 
-func getDPS(body string) int {
-	value, _ := strconv.Atoi(getValueBySubstring(body, "\"dps\":", 0))
-	return value
+func getDPS(body string) float32 {
+	value, _ := strconv.ParseFloat(getValueBySubstring(body, "\"dps\":", 0), 32)
+	return float32(value)
 }
 
 func getStamina(body string) int {
