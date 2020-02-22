@@ -28,6 +28,7 @@ type item struct {
 	MeleeCrit         int
 	RangedCrit        int
 	SpellCrit         int
+	Weights           weights
 }
 
 func newItem() *item {
@@ -57,30 +58,177 @@ func newItem() *item {
 	item.MeleeCrit = 0
 	item.RangedCrit = 0
 	item.SpellCrit = 0
+	item.Weights = []*weight{}
 	return item
 }
 
-func (i *item) print() {
-	fmt.Println("Item ID:", i.ID)
-	fmt.Println("Name:", i.Name)
-	fmt.Println("Source:", i.Source)
-	fmt.Println("iLvl:", i.ItemLevel)
-	fmt.Println("Top End Dmg:", i.TopEnd)
-	fmt.Println("DPS:", i.DPS)
-	fmt.Println("Stamina:", i.Stamina)
-	fmt.Println("Strength:", i.Strength)
-	fmt.Println("Agility:", i.Agility)
-	fmt.Println("Intellect:", i.Intellect)
-	fmt.Println("Spirit:", i.Spirit)
-	fmt.Println("Mp5:", i.Mp5)
-	fmt.Println("Spell Damage:", i.SpellDamage)
-	fmt.Println("+Healing:", i.SpellHealing)
-	fmt.Println("Melee AP:", i.MeleeAttackPower)
-	fmt.Println("Ranged AP:", i.RangedAttackPower)
-	fmt.Println("Melee Hit:", i.MeleeHit)
-	fmt.Println("Ranged Hit:", i.RangedHit)
-	fmt.Println("Spell Hit:", i.SpellHit)
-	fmt.Println("Melee Crit:", i.MeleeCrit)
-	fmt.Println("Ranged Crit:", i.RangedCrit)
-	fmt.Println("Spell Crit:", i.SpellCrit)
+var (
+	cloth    = "Cloth Armor"
+	leather  = "Leather Armor"
+	mail     = "Mail Armor"
+	plate    = "Plate Armor"
+	shield   = "Shields"
+	trinket  = "Trinkets"
+	neck     = "Amulets"
+	ring     = "Rings"
+	cloak    = "Cloaks"
+	dagger   = "Daggers"
+	fist     = "Fist Weapons"
+	mace1h   = "One-Handed Maces"
+	mace2h   = "Two-Handed Maces"
+	axe1h    = "One-Handed Axes"
+	axe2h    = "Two-Handed Axes"
+	sword1h  = "One-Handed Swords"
+	sword2h  = "Two-Handed Swords"
+	staff    = "Staves"
+	polearm  = "Polearms"
+	bow      = "Bows"
+	gun      = "Guns"
+	crossbow = "Crossbows"
+	wand     = "Wands"
+	offhand  = "Off-hand Frills"
+)
+
+func (i *item) isUsableByClass(class string) (bool, error) {
+	var usable []string
+
+	switch class {
+	case "Druid":
+		usable = []string{cloth, leather, trinket, neck, ring, cloak, dagger, fist, mace1h, mace2h, staff, offhand}
+	case "Hunter":
+		usable = []string{leather, mail, dagger, fist, axe1h, axe2h, sword1h, sword2h, staff, polearm, bow, gun, crossbow, trinket, neck, ring, cloak, offhand}
+	case "Mage":
+		usable = []string{cloth, trinket, neck, ring, cloak, dagger, sword1h, staff, offhand, wand}
+	case "Priest":
+		usable = []string{cloth, trinket, neck, ring, cloak, dagger, mace1h, staff, offhand, wand}
+	case "Rogue":
+		usable = []string{leather, trinket, neck, ring, cloak, dagger, fist, mace1h, sword1h, bow, gun, crossbow}
+	case "Shaman":
+		usable = []string{cloth, leather, mail, shield, trinket, neck, ring, cloak, dagger, fist, mace1h, mace2h, axe1h, axe2h, staff, offhand}
+	case "Warlock":
+		usable = []string{cloth, trinket, neck, ring, cloak, dagger, sword1h, staff, offhand, wand}
+	case "Warrior":
+		usable = []string{leather, mail, plate, shield, trinket, neck, ring, cloak, dagger, fist, mace1h, mace2h, axe1h, axe2h, sword1h, sword2h, staff, polearm, bow, gun, crossbow}
+	default:
+		return false, fmt.Errorf("%s is not a supported class", class)
+	}
+
+	for _, subtype := range usable {
+		if subtype == i.SubType {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (i *item) isUsableByRole(role string) (bool, error) {
+	switch role {
+	case "Melee":
+		if (i.MeleeAttackPower > 0 || i.MeleeHit > 0 || i.MeleeCrit > 0 ||
+			i.Strength > 0 || i.Agility > 0) && i.SpellDamage == 0 &&
+			i.SpellHealing == 0 && i.SpellHit == 0 && i.SpellCrit == 0 {
+			return true, nil
+		}
+		return false, nil
+	case "Magic":
+		if (i.SpellDamage > 0 || i.SpellHit > 0 || i.SpellCrit > 0 ||
+			i.Intellect > 0 || i.Spirit > 0) && i.SpellHealing == 0 &&
+			i.MeleeAttackPower == 0 && i.MeleeHit == 0 && i.MeleeCrit == 0 &&
+			i.Strength == 0 && i.Agility == 0 {
+			return true, nil
+		}
+		return false, nil
+	case "Healer":
+		if (i.SpellHealing > 0 || i.SpellDamage > 0 || i.SpellCrit > 0 ||
+			i.Intellect > 0 || i.Spirit > 0) && i.SpellHit == 0 &&
+			i.MeleeAttackPower == 0 && i.MeleeHit == 0 && i.MeleeCrit == 0 &&
+			i.Strength == 0 && i.Agility == 0 {
+			return true, nil
+		}
+		return false, nil
+	case "Ranged":
+		if (i.RangedAttackPower > 0 || i.RangedHit > 0 || i.RangedCrit > 0 ||
+			i.Agility > 0) && i.Strength == 0 && i.SpellDamage == 0 &&
+			i.SpellHealing == 0 && i.SpellHit == 0 && i.SpellCrit == 0 {
+			return true, nil
+		}
+		return false, nil
+	default:
+		return false, fmt.Errorf("%s is not a supported role", role)
+	}
+}
+
+func (i *item) setItemWeights(ws weights) error {
+	if melee, err := i.isUsableByRole("Melee"); melee && err == nil {
+		if warrior, err := i.isUsableByClass("Warrior"); warrior && err == nil {
+			i.Weights = append(i.Weights, ws.getWeightsByClass("Warrior").getWeightsByRole("Melee")...)
+		} else if err != nil {
+			return err
+		}
+		if shaman, err := i.isUsableByClass("Shaman"); shaman && err == nil {
+			i.Weights = append(i.Weights, ws.getWeightsByClass("Shaman").getWeightsByRole("Melee")...)
+		} else if err != nil {
+			return err
+		}
+		if rogue, err := i.isUsableByClass("Rogue"); rogue && err == nil {
+			i.Weights = append(i.Weights, ws.getWeightsByClass("Rogue").getWeightsByRole("Melee")...)
+		} else if err != nil {
+			return err
+		}
+		if druid, err := i.isUsableByClass("Druid"); druid && err == nil {
+			i.Weights = append(i.Weights, ws.getWeightsByClass("Druid").getWeightsByRole("Melee")...)
+		} else if err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
+
+	if ranged, err := i.isUsableByRole("Ranged"); ranged && err == nil {
+		i.Weights = append(i.Weights, ws.getWeightsByClass("Hunter").getWeightsByRole("Ranged")...)
+	} else if err != nil {
+		return err
+	}
+
+	if magic, err := i.isUsableByRole("Magic"); magic && err == nil {
+		if mage, err := i.isUsableByClass("Mage"); mage && err == nil {
+			i.Weights = append(i.Weights, ws.getWeightsByClass("Mage").getWeightsByRole("Magic")...)
+		} else if err != nil {
+			return err
+		}
+		if warlock, err := i.isUsableByClass("Warlock"); warlock && err == nil {
+			i.Weights = append(i.Weights, ws.getWeightsByClass("Warlock").getWeightsByRole("Magic")...)
+		} else if err != nil {
+			return err
+		}
+		if shaman, err := i.isUsableByClass("Shaman"); shaman && err == nil {
+			i.Weights = append(i.Weights, ws.getWeightsByClass("Shaman").getWeightsByRole("Magic")...)
+		} else if err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
+
+	if healer, err := i.isUsableByRole("Healer"); healer && err == nil {
+		if druid, err := i.isUsableByClass("Druid"); druid && err == nil {
+			i.Weights = append(i.Weights, ws.getWeightsByClass("Druid").getWeightsByRole("Healer")...)
+		} else if err != nil {
+			return err
+		}
+		if priest, err := i.isUsableByClass("Priest"); priest && err == nil {
+			i.Weights = append(i.Weights, ws.getWeightsByClass("Priest").getWeightsByRole("Healer")...)
+		} else if err != nil {
+			return err
+		}
+		if shaman, err := i.isUsableByClass("Shaman"); shaman && err == nil {
+			i.Weights = append(i.Weights, ws.getWeightsByClass("Shaman").getWeightsByRole("Healer")...)
+		} else if err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
+
+	return nil
 }
